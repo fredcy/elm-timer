@@ -5,7 +5,6 @@ import Html
 import Html.Events
 import StartApp
 import Task
-import Time exposing (Time)
 import Timer
 
 
@@ -20,7 +19,6 @@ type Action
   = Update String
   | TimerAction Timer.Action
   | Timeout
-  | TimerTick Time
 
 
 {-| Have model.debounced track the model.input value with "de-bouncing".  User
@@ -38,14 +36,8 @@ update action model =
 
     TimerAction timerAction ->
       let
-        handleTimerTick t =
-          if t <= 0 then
-            Timeout
-          else
-            TimerTick t
-
         context =
-          Signal.forwardTo actionsMailbox.address handleTimerTick
+          Signal.forwardTo actionsMailbox.address (always Timeout)
 
         ( newTimer, timerEffect ) =
           Timer.update context timerAction model.timer
@@ -57,9 +49,6 @@ update action model =
     Timeout ->
       ( { model | debounced = model.input }, Effects.none )
 
-    TimerTick t ->
-      ( model, Effects.none )
-
 
 view : Signal.Address Action -> Model -> Html.Html
 view address model =
@@ -67,6 +56,7 @@ view address model =
     []
     [ Html.input [ Html.Events.on "input" Html.Events.targetValue (Signal.message address << Update) ] []
     , Html.div [] [ Html.text model.debounced ]
+    , Html.div [] [ Html.text (model.timer.remaining |> round |> toString) ]
     ]
 
 

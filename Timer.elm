@@ -19,17 +19,23 @@ import Time exposing (Time)
 
 {-| The parent app must include the Timer Model in its own model.
 -}
-type Model
+type alias Model =
+  { state : State
+  , remaining : Time
+  }
+
+
+type State
   = Idle
-  | Starting Time
-  | Active { previous : Time, elapsed : Time, duration : Time }
+  | Starting
+  | Active { previous : Time }
 
 
 {-| Provide a Timer model in the initial idle state.
 -}
 init : Model
 init =
-  Idle
+  Model Idle 0
 
 
 {-| The parent's update function must forward these actions to the Timer. The
@@ -38,7 +44,6 @@ type is opaque as the parent just forwards all timer actions the same way.
 type Action
   = Start Time
   | Tick Time
-  | Expire
   | NoOp
 
 
@@ -46,12 +51,7 @@ type Action
 to it to indicate expiration.
 -}
 type alias Context =
-  Signal.Address Time
-
-
-sendRemainder : Context -> Time -> Effects Action
-sendRemainder context time =
-  Signal.send context time |> Task.map (always NoOp) |> Effects.task
+  Signal.Address ()
 
 
 {-| Update the Timer: start it, advance it by one tick, expire it.
@@ -61,48 +61,44 @@ update : Context -> Action -> Model -> ( Model, Effects Action )
 update context action model =
   case action of
     Start duration ->
-      case model of
+      case model.state of
         Idle ->
-          ( Starting duration
+          ( { model | remaining = duration, state = Starting }
           , Effects.tick Tick
           )
 
-        Starting duration ->
+        Starting ->
           ( model, Effects.none ) |> Debug.log "warning: Timer got Start while Starting"
 
-        Active { previous, elapsed, duration } ->
+        Active { previous } ->
           -- Restarting an active timer. There is a Tick request outstanding.
-          ( Active { previous = previous, elapsed = 0, duration = duration }
-          , sendRemainder context (duration - elapsed)
+          ( { model | remaining = duration }
+          , Effects.none
           )
 
     Tick time ->
-      case model of
+      case model.state of
         Idle ->
-          ( Idle, Effects.none ) |> Debug.log "error: Timer got Tick while Idle"
+          ( model, Effects.none ) |> Debug.log "error: Timer got Tick while Idle"
 
-        Starting duration ->
-          ( Active { duration = duration, elapsed = 0, previous = time }
-          , Effects.batch [ Effects.tick Tick, sendRemainder context duration ]
+        Starting ->
+          ( { model | state = Active { previous = time } }
+          , Effects.tick Tick
           )
 
-        Active { previous, elapsed, duration } ->
+        Active { previous } ->
           let
-            newElapsed =
-              elapsed + (time - previous)
+            newRemaining =
+              model.remaining - (time - previous) |> max 0
           in
-            if newElapsed >= duration then
-              -- Time is up. Notify the parent.
-              ( Idle
-              , sendRemainder context 0.0
+            if newRemaining == 0 then
+              ( { model | remaining = 0, state = Idle }
+              , Signal.send context () |> Task.map (always NoOp) |> Effects.task
               )
             else
-              ( Active { duration = duration, elapsed = newElapsed, previous = time }
-              , Effects.batch [ Effects.tick Tick, sendRemainder context (duration - newElapsed) ]
+              ( { model | remaining = newRemaining, state = Active { previous = time } }
+              , Effects.tick Tick
               )
-
-    Expire ->
-      ( Idle, Effects.none )
 
     NoOp ->
       ( model, Effects.none )
