@@ -1,6 +1,80 @@
-module Timer (Model, Action, Context, init, update, start) where
+module Timer (Model, Action, init, update, start) where
 
-{-| Provide fine-grained timer component for use in Elm Architecture apps.
+{-| Timer provides a fine-grained timer component for use in Elm Architecture
+apps. Its resolution is as good as can be obtained using Effects.tick.
+
+See example/Main.elm in the source for an example application that uses Timer.
+
+## Steps in adding Timer to an application
+
+### Add Timer model to application model
+
+```elm
+type alias Model = { ..., timer : Timer.Model }
+```
+
+### Initialize the timer
+
+```elm
+init = Model ..., Timer.init
+```
+
+### Define new actions to represent timeout and timer actions
+
+```elm
+type Action = ... | TimerAction Timer.Action | Timeout
+```
+
+These action names are arbitrary. The former represents actions that must be
+forwarded to the timer component. The latter occurs when the timer expires.
+
+### Define a Mailbox for receiving the expiration event
+
+```elm
+actionsMailbox =
+  Signal.mailbox Timeout
+```
+
+### Add the Mailbox signal to app inputs
+
+```elm
+app = StartApp.start { ..., inputs = [ actionMailbox.signal ] }
+```
+
+### Start timer as an effect in the update function
+
+```elm
+update action model =
+  case action of
+    ...
+    SomeTriggerAction -> ( model
+                         , Timer.start 500 |> Effects.map TimerAction
+                         )
+```
+
+### Handle timeout as new case in the update function
+
+```elm
+    Timeout -> ( someChangeTo model, Effects.none )
+```
+This could return some other effect if that's what is desired when timeout occurs.
+
+
+### Forward actions and effects to and from timer in update function
+
+```elm
+    TimerAction timerAction ->
+      let
+        context =
+          Signal.forwardTo actionsMailbox.address (always Timeout)
+
+        ( newTimer, timerEffect ) =
+          Timer.update context timerAction model.timer
+      in
+        ( { model | timer = newTimer }
+        , Effects.map TimerAction timerEffect
+        )
+```
 
 # Functions
 @docs init, update, start
@@ -8,8 +82,6 @@ module Timer (Model, Action, Context, init, update, start) where
 # Types
 @docs Action, Model
 
-# Type aliases
-@docs Context
 -}
 
 import Effects exposing (Effects)

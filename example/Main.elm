@@ -28,7 +28,7 @@ expires.
 -}
 update : Action -> Model -> ( Model, Effects Action )
 update action model =
-  case action |> Debug.log "action" of
+  case action of
     Update val ->
       ( { model | input = val }
       , Timer.start 500 |> Effects.map TimerAction
@@ -54,9 +54,11 @@ view : Signal.Address Action -> Model -> Html.Html
 view address model =
   Html.div
     []
-    [ Html.input [ Html.Events.on "input" Html.Events.targetValue (Signal.message address << Update) ] []
+    [ Html.h3 [] [ Html.text "Input here" ]
+    , Html.input [ Html.Events.on "input" Html.Events.targetValue (Signal.message address << Update) ] []
+    , Html.h3 [] [ Html.text "Debounced value" ]
     , Html.div [] [ Html.text model.debounced ]
-    , Html.div [] [ Html.text (model.timer.remaining |> round |> toString) ]
+    -- , Html.div [] [ Html.text (model.timer.remaining |> round |> toString) ]
     ]
 
 
