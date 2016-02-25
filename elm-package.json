@@ -1,12 +1,14 @@
 {
     "version": "1.0.0",
-    "summary": "helpful summary of your project, less than 80 characters",
-    "repository": "https://github.com/user/project.git",
+    "summary": "Timer component providing fine-graining timing for use in Elm Architecture apps",
+    "repository": "https://github.com/fredcy/elm-timer.git",
     "license": "BSD3",
     "source-directories": [
         "."
     ],
-    "exposed-modules": [],
+    "exposed-modules": [
+        "Timer"
+    ],
     "dependencies": {
         "elm-lang/core": "3.0.0 <= v < 4.0.0",
         "evancz/elm-effects": "2.0.1 <= v < 3.0.0"

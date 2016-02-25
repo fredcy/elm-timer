@@ -10,7 +10,7 @@ import Timer
 
 type alias Model =
   { input : String
-  , displayed : String
+  , debounced : String
   , timer : Timer.Model
   }
 
@@ -18,16 +18,14 @@ type alias Model =
 type Action
   = Update String
   | TimerAction Timer.Action
-  | UpdateDisplay String
+  | Timeout
 
 
-
-{- Have model.displayed track the model.input value with "de-bouncing".  User
+{-| Have model.debounced track the model.input value with "de-bouncing".  User
 input causes the Update action. On each Update we start (or restart) the
-timer. In the case where we forward actions to the timer we check for
-expiration; when that occurs we create an UpdateDisplay action.  -}
-
-
+timer. We pass an address to Timer.update which it sends to when the timer
+expires.
+-}
 update : Action -> Model -> ( Model, Effects Action )
 update action model =
   case action of
@@ -38,21 +36,18 @@ update action model =
 
     TimerAction timerAction ->
       let
-        ( newTimer, timerEffect ) =
-          Timer.update timerAction model.timer
+        context =
+          Signal.forwardTo actionsMailbox.address (always Timeout)
 
-        effect =
-          if timerAction == Timer.Expire then
-            UpdateDisplay model.input |> Task.succeed |> Effects.task
-          else
-            Effects.map TimerAction timerEffect
+        ( newTimer, timerEffect ) =
+          Timer.update context timerAction model.timer
       in
         ( { model | timer = newTimer }
-        , effect
+        , Effects.map TimerAction timerEffect
         )
 
-    UpdateDisplay val ->
-      ( { model | displayed = val }, Effects.none )
+    Timeout ->
+      ( { model | debounced = model.input }, Effects.none )
 
 
 view : Signal.Address Action -> Model -> Html.Html
@@ -60,7 +55,7 @@ view address model =
   Html.div
     []
     [ Html.input [ Html.Events.on "input" Html.Events.targetValue (Signal.message address << Update) ] []
-    , Html.div [] [ Html.text model.displayed ]
+    , Html.div [] [ Html.text model.debounced ]
     ]
 
 
@@ -75,10 +70,15 @@ app =
     { init = ( Model "" "" Timer.init, Effects.none )
     , update = update
     , view = view
-    , inputs = []
+    , inputs = [ actionsMailbox.signal ]
     }
 
 
 port tasks : Signal (Task.Task Effects.Never ())
 port tasks =
   app.tasks
+
+
+actionsMailbox : Signal.Mailbox Action
+actionsMailbox =
+  Signal.mailbox Timeout

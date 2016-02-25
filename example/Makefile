@@ -3,7 +3,7 @@ build:
 
 watch:
 	-$(MAKE) build
-	fswatch *.elm | \
+	fswatch Main.elm ../Timer.elm | \
 	while read f; do \
 	    echo "======================================================================="; \
 	    echo; echo; echo $$f; \
