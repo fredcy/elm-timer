@@ -39,13 +39,19 @@ type Action
   = Start Time
   | Tick Time
   | Expire
+  | NoOp
 
 
 {-| Context is the address of a `Maibox` provided by the parent. Timer will send
 to it to indicate expiration.
 -}
 type alias Context =
-  Signal.Address ()
+  Signal.Address Time
+
+
+sendRemainder : Context -> Time -> Effects Action
+sendRemainder context time =
+  Signal.send context time |> Task.map (always NoOp) |> Effects.task
 
 
 {-| Update the Timer: start it, advance it by one tick, expire it.
@@ -67,7 +73,7 @@ update context action model =
         Active { previous, elapsed, duration } ->
           -- Restarting an active timer. There is a Tick request outstanding.
           ( Active { previous = previous, elapsed = 0, duration = duration }
-          , Effects.none
+          , sendRemainder context (duration - elapsed)
           )
 
     Tick time ->
@@ -77,7 +83,7 @@ update context action model =
 
         Starting duration ->
           ( Active { duration = duration, elapsed = 0, previous = time }
-          , Effects.tick Tick
+          , Effects.batch [ Effects.tick Tick, sendRemainder context duration ]
           )
 
         Active { previous, elapsed, duration } ->
@@ -87,16 +93,19 @@ update context action model =
           in
             if newElapsed >= duration then
               -- Time is up. Notify the parent.
-              ( model
-              , Signal.send context () |> Task.map (always Expire) |> Effects.task
+              ( Idle
+              , sendRemainder context 0.0
               )
             else
               ( Active { duration = duration, elapsed = newElapsed, previous = time }
-              , Effects.tick Tick
+              , Effects.batch [ Effects.tick Tick, sendRemainder context (duration - newElapsed) ]
               )
 
     Expire ->
       ( Idle, Effects.none )
+
+    NoOp ->
+      ( model, Effects.none )
 
 
 {-| Start the timer, setting it to expire in the given number of milliseconds.
