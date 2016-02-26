@@ -5,6 +5,9 @@ apps. Its resolution is as good as can be obtained using Effects.tick.
 
 See example/Main.elm in the source for an example application that uses Timer.
 
+Note: There is a simpler solution available using just `Task.sleep`. See
+examples/Sleep.elm for that. So this Timer package is probably over-complicated.
+
 ## Steps in adding Timer to an application
 
 ### Add Timer model to application model
