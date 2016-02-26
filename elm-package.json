@@ -1,5 +1,5 @@
 {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "summary": "Timer component providing fine-graining timing for use in Elm Architecture apps",
     "repository": "https://github.com/fredcy/elm-timer.git",
     "license": "BSD3",
