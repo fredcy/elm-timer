@@ -25,8 +25,9 @@ init = Model ..., Timer.init
 type Action = ... | TimerAction Timer.Action | Timeout
 ```
 
-These action names are arbitrary. The former represents actions that must be
-forwarded to the timer component. The latter occurs when the timer expires.
+These action names are arbitrary (but must be consistent with their usage
+below). The former represents actions that must be forwarded to the timer
+component. The latter occurs when the timer expires.
 
 ### Define a Mailbox for receiving the expiration event
 
@@ -51,6 +52,8 @@ update action model =
                          , Timer.start 500 |> Effects.map TimerAction
                          )
 ```
+
+This could also be done as an effect in the app's init function.
 
 ### Handle timeout as new case in the update function
 
@@ -176,7 +179,9 @@ update context action model =
       ( model, Effects.none )
 
 
-{-| Start the timer, setting it to expire in the given number of milliseconds.
+{-| Start the timer, setting it to expire in the given number of
+milliseconds. The resulting effect must be the `Action` value that forwards to
+the timer, `TimerAction` in the examples.
 -}
 start : Time -> Effects Action
 start duration =
