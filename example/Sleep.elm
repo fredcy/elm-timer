@@ -5,6 +5,7 @@ import Html
 import Html.Events
 import StartApp
 import Task
+import Time
 
 
 type alias Model =
@@ -24,9 +25,15 @@ type Action
   | Timeout Int
 
 
+timeToSettle =
+  250 * Time.millisecond
+
+
 {-| Have model.debounced track the model.input value with "de-bouncing".  User
-input causes the Update action. On each Update we start (or restart) the
-timer.
+input causes the Update action. On each Update we start a new Task.sleep task
+and associate it with a unique `Timeout` value, keeping track of the most recent
+value in model.sleepCount. When the most recent timer fires we consider the
+input settled and act on it.
 -}
 update : Action -> Model -> ( Model, Effects Action )
 update action model =
@@ -37,7 +44,7 @@ update action model =
           model.sleepCount + 1
       in
         ( { model | input = val, sleepCount = newCount }
-        , Task.sleep 250 |> Effects.task |> Effects.map (always (Timeout newCount))
+        , Task.sleep timeToSettle |> Effects.task |> Effects.map (always (Timeout newCount))
         )
 
     Timeout count ->
