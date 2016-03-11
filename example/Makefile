@@ -1,4 +1,4 @@
-build: main.html sleep.html
+build: main.html sleep.html settled.html
 
 main.html: Main.elm
 	elm make Main.elm --output $@
@@ -6,9 +6,12 @@ main.html: Main.elm
 sleep.html: Sleep.elm
 	elm make Sleep.elm --output $@
 
+settled.html: Settled.elm
+	elm make Settled.elm --output $@
+
 watch:
 	-$(MAKE) build
-	fswatch Main.elm Sleep.elm ../Timer.elm | \
+	fswatch Main.elm Sleep.elm Settled.elm ./Timer.elm | \
 	while read f; do \
 	    echo "======================================================================="; \
 	    echo; echo; echo $$f; \
